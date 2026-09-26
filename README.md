@@ -1,25 +1,43 @@
 # CRM Assist
 
-Front-end de um assistente de CRM para times de vendas B2B, com integração com o RD Station, gestão de leads, chatbot com IA e acompanhamento de desempenho.
+Assistente de CRM com inteligência artificial para equipes de vendas B2B, integrado ao **RD Station**. É o projeto de Trabalho de Conclusão de Curso (TCC) de Augusto Dias Rosa no COTEMIG.
 
-Projeto originalmente exportado do Figma Make: https://www.figma.com/design/RA8I7ImbAiQweaYPMYNnR8/CRM-Assist
+Com o CRM Assist, cada membro do time comercial consulta funil, leads, desempenho e relatórios **em linguagem natural**, sem depender de quem domina o RD Station.
 
-> O backend (FastAPI + PostgreSQL + integração RD Station) está na branch [`cursor/backend-tcc-fastapi-rd-station`](https://github.com/GutoDiasRosa/CRMAssistant/tree/cursor/backend-tcc-fastapi-rd-station).
+Protótipo de telas no Figma: https://www.figma.com/design/RA8I7ImbAiQweaYPMYNnR8/CRM-Assist
 
-## Stack
+## Estrutura do repositório
 
-- [Vite](https://vite.dev/) 6
-- [React](https://react.dev/) 18 + TypeScript
-- [React Router](https://reactrouter.com/) 7
-- [Tailwind CSS](https://tailwindcss.com/) 4
-- Componentes baseados em [Radix UI](https://www.radix-ui.com/) / shadcn
+| Parte | Tecnologia | Onde |
+|---|---|---|
+| Front-end | React 18, Vite 6, TypeScript, Tailwind CSS 4, React Router 7 | raiz (`src/`) |
+| Backend (API) | Python, FastAPI, PostgreSQL, LangChain + Claude | [`backend/`](backend/README.md) |
 
-## Pré-requisitos
+```
+.
+├── src/                 # Front-end: telas, componentes e estilos
+├── backend/             # API FastAPI (ver backend/README.md)
+├── docker-compose.yml   # Banco PostgreSQL + API
+├── package.json         # Dependências do front-end
+└── vite.config.ts
+```
 
-- [Node.js](https://nodejs.org/) 18 ou superior (recomendado 20+)
-- npm 9 ou superior
+## Backend
 
-## Como rodar o projeto
+Pela raiz do repositório:
+
+```bash
+docker compose up --build
+```
+
+- API: <http://localhost:8000>
+- Documentação interativa: <http://localhost:8000/docs>
+
+Arquitetura, endpoints, variáveis de ambiente e execução sem Docker estão no [README do backend](backend/README.md).
+
+## Front-end
+
+Pré-requisitos: [Node.js](https://nodejs.org/) 18 ou superior (recomendado 20+) e npm 9 ou superior.
 
 1. Instale as dependências:
 
@@ -33,19 +51,12 @@ Projeto originalmente exportado do Figma Make: https://www.figma.com/design/RA8I
    npm run dev
    ```
 
-3. Abra [http://localhost:5173](http://localhost:5173) no navegador.
+3. Abra <http://localhost:5173> no navegador.
 
-## Scripts disponíveis
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Inicia o servidor de desenvolvimento (Vite) |
+| `npm run build` | Gera a build de produção em `dist/` |
+| `npx tsc --noEmit` | Verifica os tipos TypeScript sem gerar arquivos |
 
-| Comando         | Descrição                                      |
-| --------------- | ----------------------------------------------- |
-| `npm run dev`   | Inicia o servidor de desenvolvimento (Vite)      |
-| `npm run build` | Gera a build de produção em `dist/`              |
-
-## Verificação de tipos
-
-O projeto usa TypeScript. Para checar os tipos sem gerar arquivos:
-
-```bash
-npx tsc --noEmit
-```
+> As telas ainda usam dados de exemplo. A integração com a API é o próximo passo.
