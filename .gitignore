@@ -1,16 +1,10 @@
-# Front-end (Node / Vite)
 node_modules/
 dist/
 dist-ssr/
 *.local
-*.tsbuildinfo
 
-# Back-end (Python)
-.venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-*.egg-info/
+# TypeScript incremental build info
+*.tsbuildinfo
 
 # Logs
 logs/
