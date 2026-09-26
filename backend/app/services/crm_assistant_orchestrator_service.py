@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.agents.intent_router_crm import classify_intent
 from app.db.models import ConversaChatbot, Mensagem, Usuario
-from app.domain.repositories.crm import OportunidadeRepository
+from app.domain.repositories.crm import LeadRepository, OportunidadeRepository
 
 
 class CrmAssistantOrchestratorService:
