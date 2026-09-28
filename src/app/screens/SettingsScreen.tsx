@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, LogOut, MinusCircle, Users } from "lucide-react";
+import { CheckCircle2, XCircle, LogOut, MinusCircle, PlugZap, Users } from "lucide-react";
 import { useNavigate } from "react-router";
 import { sair, useUsuario } from "../components/RequireAuth";
 import { api, PERFIL_LABEL, type Sincronizacao } from "../lib/api";
@@ -71,13 +71,22 @@ export default function SettingsScreen() {
               </p>
             </div>
 
-            {/* Botão Conectar (fluxo OAuth do RD Station no backend) */}
-            <a
-              href={api.rdAuthorizeUrl}
-              className="block text-center w-full bg-white border border-[#1B4F8A] text-[#1B4F8A] py-3 rounded-lg hover:bg-[#EBF2F9] transition-colors"
-            >
-              {conectado ? "Reconectar" : "Conectar ao RD Station"}
-            </a>
+            {/* Configuração da conexão (somente administradores) */}
+            {usuario.perfil === "ADMIN" ? (
+              <button
+                onClick={() => navigate("/integracao-rd")}
+                className="w-full bg-white border border-[#1B4F8A] text-[#1B4F8A] py-3 rounded-lg hover:bg-[#EBF2F9] transition-colors flex items-center justify-center gap-2"
+              >
+                <PlugZap className="w-5 h-5" />
+                <span>{conectado ? "Gerenciar conexão" : "Configurar conexão"}</span>
+              </button>
+            ) : (
+              !conectado && (
+                <p className="text-xs text-gray-500">
+                  Peça a um administrador para conectar o RD Station.
+                </p>
+              )
+            )}
           </div>
         </section>
 

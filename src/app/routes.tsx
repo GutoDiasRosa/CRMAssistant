@@ -8,6 +8,7 @@ import LeadDetailsScreen from "./screens/LeadDetailsScreen";
 import TeamPerformanceScreen from "./screens/TeamPerformanceScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import UsersScreen from "./screens/UsersScreen";
+import IntegracaoRdScreen from "./screens/IntegracaoRdScreen";
 
 export const router = createBrowserRouter([
   {
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { path: "/team", Component: TeamPerformanceScreen },
       { path: "/settings", Component: SettingsScreen },
       { path: "/usuarios", Component: UsersScreen },
+      { path: "/integracao-rd", Component: IntegracaoRdScreen },
     ],
   },
 ]);

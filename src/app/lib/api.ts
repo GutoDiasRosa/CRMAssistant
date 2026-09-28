@@ -50,6 +50,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const detail = typeof body?.detail === "string" ? body.detail : `Erro ${response.status}`;
     throw new ApiError(response.status, detail);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -101,6 +102,19 @@ export type Sincronizacao = {
   created_at: string;
 };
 
+export type ConexaoRd = {
+  connected: boolean;
+  client_id: string | null;
+  has_client_secret: boolean;
+  credenciais_origem: "tela" | "env" | null;
+  redirect_uri: string;
+  webhook_url: string;
+  webhook_secret_configurado: boolean;
+  conectado_em: string | null;
+  token_expira_em: string | null;
+  ultima_sincronizacao: string | null;
+};
+
 // ---- Endpoints ----
 
 export const api = {
@@ -119,7 +133,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ mensagem, sessionId }),
     }),
-  rdAuthorizeUrl: `${API_URL}/oauth/rd/authorize`,
+  // Integração com o RD Station (somente perfil ADMIN)
+  rdConexao: () => request<ConexaoRd>("/oauth/rd/conexao"),
+  rdSalvarCredenciais: (client_id: string, client_secret: string | null) =>
+    request<void>("/oauth/rd/credenciais", {
+      method: "PUT",
+      body: JSON.stringify({ client_id, client_secret }),
+    }),
+  rdUrlAutorizacao: () => request<{ url: string }>("/oauth/rd/authorize-url", { method: "POST" }),
+  rdDesconectar: () => request<void>("/oauth/rd/conexao", { method: "DELETE" }),
   // Gestão de usuários (somente perfil ADMIN)
   listarUsuarios: () => request<Usuario[]>("/usuarios"),
   criarUsuario: (dados: NovoUsuario) =>
