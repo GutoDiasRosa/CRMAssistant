@@ -1,5 +1,4 @@
 import { ChevronDown, TrendingUp, TrendingDown } from "lucide-react";
-import BottomNav from "../components/BottomNav";
 
 const teamMembers = [
   {
@@ -42,10 +41,10 @@ const teamMembers = [
 
 export default function TeamPerformanceScreen() {
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-white pb-20 lg:pb-8">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
-        <h1 className="text-xl text-gray-900 mb-3">Performance do Time</h1>
+      <header className="bg-white border-b border-gray-200 px-6 lg:px-10 py-4 sticky top-0 z-10 md:flex md:items-center md:justify-between">
+        <h1 className="text-xl text-gray-900 mb-3 md:mb-0">Performance do Time</h1>
         
         {/* Seletor de Período */}
         <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F5] rounded-lg text-sm text-gray-700">
@@ -55,7 +54,7 @@ export default function TeamPerformanceScreen() {
       </header>
 
       {/* Conteúdo */}
-      <div className="p-6 space-y-6">
+      <div className="p-6 lg:p-10 space-y-6 max-w-6xl">
         {/* Card Total do Time */}
         <div className="bg-[#1B4F8A] text-white rounded-xl p-6">
           <h3 className="text-base mb-2 opacity-90">Negócios fechados no mês</h3>
@@ -75,7 +74,7 @@ export default function TeamPerformanceScreen() {
         </div>
 
         {/* Lista de Vendedores */}
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {teamMembers.map((member) => (
             <div
               key={member.id}
@@ -124,8 +123,6 @@ export default function TeamPerformanceScreen() {
         </div>
       </div>
 
-      {/* Menu de Navegação Inferior */}
-      <BottomNav />
     </div>
   );
 }

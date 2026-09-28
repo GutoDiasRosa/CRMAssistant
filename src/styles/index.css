@@ -7,14 +7,9 @@ body {
   background: #f8f9fa;
 }
 
-/* Mobile-first container */
+/* Ocupa a tela toda; o layout responsivo fica em components/AppLayout.tsx */
 #root {
-  max-width: 480px;
-  margin: 0 auto;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   min-height: 100vh;
-  background: white;
-  position: relative;
 }
 
 /* Garantir scroll suave */

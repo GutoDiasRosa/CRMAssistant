@@ -1,23 +1,18 @@
-import { Home, TrendingUp, MessageSquare, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router";
+import { NAV_ITEMS, estaAtivo } from "./navItems";
 
+// Navegação do celular; em telas grandes (lg) o menu lateral (Sidebar) assume.
 export default function BottomNav() {
   const location = useLocation();
-
-  const navItems = [
-    { icon: Home, label: "Home", path: "/dashboard" },
-    { icon: TrendingUp, label: "Funil", path: "/funnel" },
-    { icon: MessageSquare, label: "Chat", path: "/chat" },
-    { icon: Settings, label: "Config", path: "/settings" },
-  ];
+  const navItems = NAV_ITEMS.filter((item) => item.mobile);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 max-w-md mx-auto">
-      <div className="flex justify-around items-center">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 px-4 py-2">
+      <div className="flex justify-around items-center max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          
+          const isActive = estaAtivo(item, location.pathname);
+
           return (
             <Link
               key={item.path}

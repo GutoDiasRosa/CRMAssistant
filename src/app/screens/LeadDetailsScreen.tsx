@@ -26,9 +26,9 @@ export default function LeadDetailsScreen() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-24 lg:pb-8">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-200 px-6 lg:px-10 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2">
             <ArrowLeft className="w-6 h-6 text-gray-900" />
@@ -38,7 +38,7 @@ export default function LeadDetailsScreen() {
       </header>
 
       {/* Conteúdo */}
-      <div className="p-6 space-y-6">
+      <div className="p-6 lg:p-10 grid gap-6 lg:gap-10 lg:grid-cols-2 lg:items-start max-w-6xl">
         {/* Dados do Contato */}
         <section>
           <h2 className="text-base text-gray-900 mb-4">Dados do contato</h2>
@@ -127,7 +127,7 @@ export default function LeadDetailsScreen() {
       </div>
 
       {/* Botão Flutuante */}
-      <div className="fixed bottom-24 left-0 right-0 px-4 flex justify-end max-w-[480px] mx-auto">
+      <div className="fixed bottom-24 right-4 lg:bottom-8 lg:right-10 z-10">
         <button
           onClick={() => navigate("/chat")}
           className="bg-[#1B4F8A] text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 hover:bg-[#153d6e] transition-colors text-sm"
