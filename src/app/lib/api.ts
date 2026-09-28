@@ -83,6 +83,14 @@ export type OportunidadeKanban = {
   lead_nome: string | null;
 };
 
+export type FiltrosKanban = {
+  usuario_id?: string;
+  inicio?: string; // ISO 8601, inclusivo
+  fim?: string; // ISO 8601, exclusivo
+};
+
+export type Vendedor = { id: string; nome: string };
+
 export type Metricas = {
   total_leads: number;
   total_oportunidades: number;
@@ -124,7 +132,13 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   me: () => request<Usuario>("/auth/me"),
-  kanban: () => request<Record<string, OportunidadeKanban[]>>("/api/crm/kanban"),
+  kanban: (filtros: FiltrosKanban = {}) => {
+    const params = new URLSearchParams();
+    for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
+    const query = params.toString();
+    return request<Record<string, OportunidadeKanban[]>>(`/api/crm/kanban${query ? `?${query}` : ""}`);
+  },
+  vendedores: () => request<Vendedor[]>("/api/crm/vendedores"),
   metricas: () => request<Metricas>("/api/crm/metricas"),
   sincronizacoes: () => request<Sincronizacao[]>("/api/crm/sincronizacoes"),
   rdStatus: () => request<{ connected: boolean }>("/oauth/rd/status"),
