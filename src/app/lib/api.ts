@@ -91,6 +91,24 @@ export type FiltrosKanban = {
 
 export type Vendedor = { id: string; nome: string };
 
+export type PerformanceNumeros = {
+  prospectados: number;
+  qualificados: number;
+  fechados: number;
+  valor_fechado: number;
+};
+
+export type PerformanceVendedor = PerformanceNumeros & {
+  id: string;
+  nome: string;
+  perfil: Perfil;
+};
+
+export type PerformanceTime = {
+  vendedores: PerformanceVendedor[];
+  totais: PerformanceNumeros;
+};
+
 export type Metricas = {
   total_leads: number;
   total_oportunidades: number;
@@ -111,16 +129,28 @@ export type Sincronizacao = {
 };
 
 export type ConexaoRd = {
-  connected: boolean;
+  ativo: boolean;
+  // Credenciais do app (OAuth)
   client_id: string | null;
   has_client_secret: boolean;
   credenciais_origem: "tela" | "env" | null;
   redirect_uri: string;
-  webhook_url: string;
-  webhook_secret_configurado: boolean;
+  // Usuário responsável pelos registros novos
+  usuario_integracao: { id: string; nome: string } | null;
+  // Autorização OAuth
+  connected: boolean;
+  token_status: "ausente" | "valido" | "expirado";
   conectado_em: string | null;
   token_expira_em: string | null;
+  // Tokens da API (o privado nunca volta para a tela)
+  token_publico: string | null;
+  has_token_privado: boolean;
+  // Webhook
+  webhook_url: string;
+  webhook_secret_configurado: boolean;
   ultima_sincronizacao: string | null;
+  ultima_falha: { em: string; mensagem: string } | null;
+  falhas_ultimos_7_dias: number;
 };
 
 // ---- Endpoints ----
@@ -139,6 +169,12 @@ export const api = {
     return request<Record<string, OportunidadeKanban[]>>(`/api/crm/kanban${query ? `?${query}` : ""}`);
   },
   vendedores: () => request<Vendedor[]>("/api/crm/vendedores"),
+  performance: (filtros: { inicio?: string; fim?: string } = {}) => {
+    const params = new URLSearchParams();
+    for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
+    const query = params.toString();
+    return request<PerformanceTime>(`/api/crm/performance${query ? `?${query}` : ""}`);
+  },
   metricas: () => request<Metricas>("/api/crm/metricas"),
   sincronizacoes: () => request<Sincronizacao[]>("/api/crm/sincronizacoes"),
   rdStatus: () => request<{ connected: boolean }>("/oauth/rd/status"),
@@ -154,6 +190,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ client_id, client_secret }),
     }),
+  rdSalvarConfiguracao: (dados: { ativo?: boolean; usuario_integracao_id?: string | null }) =>
+    request<void>("/oauth/rd/configuracao", { method: "PUT", body: JSON.stringify(dados) }),
+  rdSalvarTokensApi: (token_publico: string, token_privado: string | null) =>
+    request<void>("/oauth/rd/tokens-api", {
+      method: "PUT",
+      body: JSON.stringify({ token_publico, token_privado }),
+    }),
+  rdRegenerarWebhookToken: () => request<void>("/oauth/rd/webhook-token", { method: "POST" }),
+  rdTestar: () => request<{ conta: string | null }>("/oauth/rd/testar", { method: "POST" }),
   rdUrlAutorizacao: () => request<{ url: string }>("/oauth/rd/authorize-url", { method: "POST" }),
   rdDesconectar: () => request<void>("/oauth/rd/conexao", { method: "DELETE" }),
   // Gestão de usuários (somente perfil ADMIN)

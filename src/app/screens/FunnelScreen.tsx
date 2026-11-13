@@ -16,6 +16,7 @@ import {
   type OportunidadeKanban,
   type Vendedor,
 } from "../lib/api";
+import { ehPeriodo, inicioDoPeriodo, PERIODOS, type PeriodoId } from "../lib/periodos";
 
 // Ordem das etapas conhecidas; etapas novas vindas do RD Station aparecem depois.
 const ORDEM_ETAPAS = ["Prospecção", "Qualificado", "Proposta", "Proposta enviada", "Negociação"];
@@ -32,39 +33,6 @@ function ordenarEtapas(kanban: Record<string, OportunidadeKanban[]>): Etapa[] {
     .sort((a, b) => posicao(a.name) - posicao(b.name));
 }
 
-// Períodos pela data em que a oportunidade entrou no CRM Assist.
-const PERIODOS = [
-  { id: "todos", label: "Todo o período" },
-  { id: "7d", label: "Últimos 7 dias" },
-  { id: "30d", label: "Últimos 30 dias" },
-  { id: "90d", label: "Últimos 90 dias" },
-  { id: "mes", label: "Este mês" },
-  { id: "ano", label: "Este ano" },
-] as const;
-
-type PeriodoId = (typeof PERIODOS)[number]["id"];
-
-// Início do período à meia-noite do horário local, em ISO (a API compara com fuso).
-function inicioDoPeriodo(periodo: PeriodoId): string | undefined {
-  const hoje = new Date();
-  const [ano, mes, dia] = [hoje.getFullYear(), hoje.getMonth(), hoje.getDate()];
-  const meiaNoite = (a: number, m: number, d: number) => new Date(a, m, d).toISOString();
-  switch (periodo) {
-    case "7d":
-      return meiaNoite(ano, mes, dia - 6);
-    case "30d":
-      return meiaNoite(ano, mes, dia - 29);
-    case "90d":
-      return meiaNoite(ano, mes, dia - 89);
-    case "mes":
-      return meiaNoite(ano, mes, 1);
-    case "ano":
-      return meiaNoite(ano, 0, 1);
-    default:
-      return undefined;
-  }
-}
-
 const TODOS = "todos";
 
 export default function FunnelScreen() {
@@ -77,7 +45,7 @@ export default function FunnelScreen() {
   // Filtros ficam na URL para sobreviver ao "voltar" da tela do lead.
   const [searchParams, setSearchParams] = useSearchParams();
   const periodoUrl = searchParams.get("periodo");
-  const periodo: PeriodoId = PERIODOS.some((p) => p.id === periodoUrl) ? (periodoUrl as PeriodoId) : "todos";
+  const periodo: PeriodoId = ehPeriodo(periodoUrl) ? periodoUrl : "todos";
   const vendedorId = (veTodoTime && searchParams.get("vendedor")) || TODOS;
   const setFiltro = (chave: "periodo" | "vendedor", valor: string) =>
     setSearchParams(
