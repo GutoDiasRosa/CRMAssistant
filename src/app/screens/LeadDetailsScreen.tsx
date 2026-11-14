@@ -5,7 +5,6 @@ import {
   CloudOff,
   Info,
   Mail,
-  MessageSquare,
   Pencil,
   Phone,
   RefreshCw,
@@ -16,6 +15,7 @@ import {
 import { useNavigate, useParams } from "react-router";
 import { AnotacoesPanel } from "../components/Anotacoes";
 import OportunidadeDialog from "../components/OportunidadeDialog";
+import PedirResumoBotao from "../components/PedirResumoBotao";
 import {
   api,
   formatarMoeda,
@@ -239,16 +239,11 @@ export default function LeadDetailsScreen() {
         onSalva={aposSalvar}
       />
 
-      {/* Botão Flutuante */}
-      <div className="fixed bottom-24 right-4 lg:bottom-8 lg:right-10 z-10">
-        <button
-          onClick={() => navigate("/chat")}
-          className="bg-[#1B4F8A] text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 hover:bg-[#153d6e] transition-colors text-sm"
-        >
-          <MessageSquare className="w-5 h-5 flex-shrink-0" />
-          <span className="whitespace-nowrap">Pedir resumo ao assistente</span>
-        </button>
-      </div>
+      {op && (
+        <PedirResumoBotao
+          pergunta={`Resuma a oportunidade "${op.nome}" (ID ${op.id}): situação atual, histórico de contatos e próximos passos.`}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Clock, Send } from "lucide-react";
+import { useLocation, useNavigate } from "react-router";
+import type { ChatState } from "../components/PedirResumoBotao";
 import { useUsuario } from "../components/RequireAuth";
 import { api } from "../lib/api";
 
@@ -16,7 +18,19 @@ const horaAtual = () =>
 
 export default function ChatbotScreen() {
   const usuario = useUsuario();
-  const [inputValue, setInputValue] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Pergunta pronta vinda de outra tela (ex.: "Pedir resumo ao assistente"); o usuário revisa e envia.
+  const [inputValue, setInputValue] = useState(() => (location.state as ChatState | null)?.pergunta ?? "");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!(location.state as ChatState | null)?.pergunta) return;
+    inputRef.current?.focus();
+    // Limpa o estado da navegação: recarregar a página não deve trazer a pergunta de novo.
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [enviando, setEnviando] = useState(false);
   // Identifica a conversa no backend; vem na primeira resposta do /chat.
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -125,14 +139,22 @@ export default function ChatbotScreen() {
 
       {/* Campo de Input Fixo */}
       <div className="bg-white border-t border-gray-200 px-6 lg:px-10 py-4 sticky bottom-16 lg:bottom-0">
-        <div className="flex items-center gap-3 max-w-3xl mx-auto">
-          <input
-            type="text"
+        <div className="flex items-end gap-3 max-w-3xl mx-auto">
+          {/* Cresce com o texto (perguntas prontas são longas); Enter envia, Shift+Enter quebra a linha. */}
+          <textarea
+            ref={inputRef}
+            rows={1}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder="Digite sua pergunta..."
-            className="flex-1 px-4 py-3 bg-[#F5F5F5] rounded-full focus:outline-none focus:ring-2 focus:ring-[#1B4F8A]"
+            aria-label="Pergunta"
+            className="flex-1 px-4 py-3 bg-[#F5F5F5] rounded-3xl resize-none max-h-32 overflow-y-auto [field-sizing:content] focus:outline-none focus:ring-2 focus:ring-[#1B4F8A]"
           />
           <button
             onClick={handleSend}

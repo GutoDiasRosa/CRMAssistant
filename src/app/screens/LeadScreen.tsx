@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router";
 import { AnotacoesPanel } from "../components/Anotacoes";
 import LeadDialog from "../components/LeadDialog";
 import OportunidadeDialog from "../components/OportunidadeDialog";
+import PedirResumoBotao from "../components/PedirResumoBotao";
 import { api, formatarMoeda, linkContatoRd, rotuloStatus, type LeadDetalhe } from "../lib/api";
 
 type Aviso = { ok: boolean; texto: string };
@@ -43,7 +44,7 @@ export default function LeadScreen() {
     setAviso(rd.enviado ? { ok: true, texto: ok } : { ok: false, texto: rd.mensagem ?? "Salvo." });
 
   return (
-    <div className="min-h-screen bg-white pb-20 lg:pb-8">
+    <div className="min-h-screen bg-white pb-24 lg:pb-8">
       <header className="bg-white border-b border-gray-200 px-6 lg:px-10 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} aria-label="Voltar" className="p-2 -ml-2">
@@ -162,6 +163,12 @@ export default function LeadScreen() {
 
           <AnotacoesPanel leadId={lead.id} />
         </div>
+      )}
+
+      {lead && (
+        <PedirResumoBotao
+          pergunta={`Resuma o lead ${lead.nome} (ID ${lead.id}): oportunidades, histórico de contatos e próximos passos.`}
+        />
       )}
 
       <LeadDialog

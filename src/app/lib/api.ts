@@ -97,11 +97,17 @@ export type FiltrosKanban = {
 
 export type Vendedor = { id: string; nome: string };
 
+// Prospectados, qualificados e convertidos contam as oportunidades criadas no período;
+// fechados e perdidos, as encerradas no período (data de fechamento).
 export type PerformanceNumeros = {
   prospectados: number;
+  valor_prospectado: number;
   qualificados: number;
+  convertidos: number; // das criadas no período, as já ganhas (base da taxa de conversão)
   fechados: number;
   valor_fechado: number;
+  perdidos: number;
+  valor_perdido: number;
 };
 
 export type PerformanceVendedor = PerformanceNumeros & {
@@ -115,10 +121,16 @@ export type PerformanceTime = {
   totais: PerformanceNumeros;
 };
 
+type QuantidadeValor = { quantidade: number; valor: number };
+
+// Leads e oportunidades contam pela data de criação; ganhas e perdidas, pela data de fechamento.
 export type Metricas = {
   total_leads: number;
   total_oportunidades: number;
   valor_total_oportunidades: number;
+  abertas: QuantidadeValor;
+  ganhas: QuantidadeValor;
+  perdidas: QuantidadeValor;
 };
 
 export type ChatResposta = {
@@ -290,7 +302,12 @@ export const api = {
     const query = params.toString();
     return request<PerformanceTime>(`/api/crm/performance${query ? `?${query}` : ""}`);
   },
-  metricas: () => request<Metricas>("/api/crm/metricas"),
+  metricas: (filtros: { inicio?: string; fim?: string } = {}) => {
+    const params = new URLSearchParams();
+    for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
+    const query = params.toString();
+    return request<Metricas>(`/api/crm/metricas${query ? `?${query}` : ""}`);
+  },
   etapas: () => request<Etapas>("/api/crm/etapas"),
   leads: (filtros: { busca?: string; usuario_id?: string } = {}) => {
     const params = new URLSearchParams();

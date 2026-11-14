@@ -80,6 +80,10 @@ export default function AgendaScreen() {
     setDoDia((atual) => atual?.filter((x) => x.id !== id) ?? null);
   };
 
+  // Quem não vê o time recebe também os retornos de colegas nos clientes dele: ficam numa seção à parte.
+  const meusRetornos = veTodoTime ? retornos : (retornos?.filter((a) => a.autor?.id === usuario.id) ?? null);
+  const retornosDeColegas = veTodoTime ? [] : (retornos?.filter((a) => a.autor?.id !== usuario.id) ?? []);
+
   const titulo =
     dia === hoje
       ? "Hoje"
@@ -147,18 +151,35 @@ export default function AgendaScreen() {
 
         <section className="space-y-3">
           <h2 className="text-base text-gray-900">
-            Retornos {dia === hoje ? "para hoje e atrasados" : `para ${formatarDia(dia)}`}
+            {veTodoTime ? "Retornos" : "Seus retornos"} {dia === hoje ? "para hoje e atrasados" : `para ${formatarDia(dia)}`}
           </h2>
           {retornos === null && !erro && <p className="text-sm text-gray-500">Carregando...</p>}
-          {retornos?.length === 0 && <p className="text-sm text-gray-500">Nenhum retorno agendado.</p>}
-          {!!retornos?.length && (
+          {meusRetornos?.length === 0 && <p className="text-sm text-gray-500">Nenhum retorno agendado.</p>}
+          {!!meusRetornos?.length && (
             <ul className="space-y-3">
-              {retornos.map((a) => (
+              {meusRetornos.map((a) => (
                 <AnotacaoItem key={a.id} anotacao={a} mostrarCliente onAlterada={alterar} onExcluida={excluir} />
               ))}
             </ul>
           )}
         </section>
+
+        {/* SDR/Closer: retornos que colegas marcaram nos clientes da carteira dele, à parte da própria agenda. */}
+        {!!retornosDeColegas.length && (
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-base text-gray-900">Da sua carteira, agendados por colegas</h2>
+              <p className="text-sm text-gray-500">
+                Retornos que outros vendedores marcaram em leads e oportunidades que você acompanha.
+              </p>
+            </div>
+            <ul className="space-y-3">
+              {retornosDeColegas.map((a) => (
+                <AnotacaoItem key={a.id} anotacao={a} mostrarCliente onAlterada={alterar} onExcluida={excluir} />
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="space-y-3">
           <h2 className="text-base text-gray-900">Anotações do dia</h2>

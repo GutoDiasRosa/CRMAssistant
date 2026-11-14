@@ -56,7 +56,8 @@ export default function TeamPerformanceScreen() {
 
   const labelPeriodo = PERIODOS.find((p) => p.id === periodo)?.label ?? "Período";
   const totais = dados?.totais;
-  const taxaTime = totais ? taxa(totais.fechados, totais.prospectados) : 0;
+  // Conversão: das oportunidades criadas no período, quantas já foram ganhas.
+  const taxaTime = totais ? taxa(totais.convertidos, totais.prospectados) : 0;
   const percentualTime = Math.round(taxaTime * 100);
   // Comparar com o time só faz sentido quando há mais de um vendedor na lista.
   const comparaComTime = (dados?.vendedores.length ?? 0) > 1;
@@ -101,15 +102,21 @@ export default function TeamPerformanceScreen() {
             <div className="flex items-end gap-2 mb-1">
               <span className="text-4xl">{totais.fechados}</span>
               <span className="text-xl opacity-90 mb-1">
-                de {totais.prospectados} {totais.prospectados === 1 ? "oportunidade" : "oportunidades"}
+                {totais.fechados === 1 ? "negócio ganho" : "negócios ganhos"}
               </span>
             </div>
-            <p className="text-sm opacity-90">{formatarMoeda(totais.valor_fechado)} em negócios ganhos</p>
+            <p className="text-sm opacity-90">
+              {formatarMoeda(totais.valor_fechado)} em vendas · {totais.perdidos}{" "}
+              {totais.perdidos === 1 ? "perdido" : "perdidos"}
+            </p>
             <div className="mt-4 pt-4 border-t border-white/20">
               <div className="w-full bg-white/20 rounded-full h-2">
                 <div className="bg-white h-2 rounded-full" style={{ width: `${percentualTime}%` }}></div>
               </div>
-              <p className="text-sm mt-2 opacity-90">{percentualTime}% de conversão</p>
+              <p className="text-sm mt-2 opacity-90">
+                {percentualTime}% de conversão das {totais.prospectados}{" "}
+                {totais.prospectados === 1 ? "oportunidade criada" : "oportunidades criadas"} no período
+              </p>
             </div>
           </div>
 
@@ -120,7 +127,7 @@ export default function TeamPerformanceScreen() {
           {/* Lista de Vendedores */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {dados.vendedores.map((member) => {
-              const acimaDoTime = taxa(member.fechados, member.prospectados) >= taxaTime;
+              const acimaDoTime = taxa(member.convertidos, member.prospectados) >= taxaTime;
               return (
                 <div key={member.id} className="bg-white border border-gray-200 rounded-xl p-5">
                   {/* Header do Card */}

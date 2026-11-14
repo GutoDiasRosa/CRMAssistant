@@ -1,4 +1,5 @@
-// Períodos pela data em que a oportunidade entrou no CRM Assist (compartilhados entre telas).
+// Períodos compartilhados entre telas: oportunidades em aberto contam pela data de criação;
+// ganhas e perdidas, pela data de fechamento.
 export const PERIODOS = [
   { id: "todos", label: "Todo o período" },
   { id: "7d", label: "Últimos 7 dias" },
