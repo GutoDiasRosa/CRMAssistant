@@ -319,6 +319,8 @@ export default function IntegracaoRdScreen() {
   const credenciaisSalvas = !!conexao.client_id && conexao.has_client_secret;
   const autorizado = conexao.token_status === "valido";
   const webhookAtivo = conexao.webhooks.length > 0;
+  const configurada =
+    conexao.connected || conexao.ativo || !!conexao.client_id || !!conexao.usuario_integracao || webhookAtivo;
   const statusConexao = !conexao.ativo
     ? { texto: "Integração desativada", cor: "text-gray-500" }
     : conexao.token_status === "valido"
@@ -358,8 +360,8 @@ export default function IntegracaoRdScreen() {
                 <p className={`text-base ${statusConexao.cor}`}>{statusConexao.texto}</p>
               </div>
             </div>
-            {conexao.connected && (
-              <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
+              {conexao.connected && (
                 <button
                   onClick={testar}
                   disabled={ocupado !== null}
@@ -369,15 +371,18 @@ export default function IntegracaoRdScreen() {
                   <RefreshCw className={`w-4 h-4 ${ocupado === "testar" ? "animate-spin" : ""}`} />
                   Testar conexão
                 </button>
+              )}
+              {/* Disponível com qualquer passo preenchido, mesmo sem autorização concluída. */}
+              {configurada && (
                 <button
                   onClick={() => setConfirmarDesconexao(true)}
                   className="px-4 py-2 border border-[#EF4444] text-[#EF4444] rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2 text-sm"
                 >
                   <Unplug className="w-4 h-4" />
-                  Desconectar
+                  Desconectar e limpar
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <dl className="grid gap-4 sm:grid-cols-3 mt-5 pt-5 border-t border-gray-200">
@@ -403,14 +408,19 @@ export default function IntegracaoRdScreen() {
           {confirmarDesconexao && (
             <div className="mt-5 p-4 bg-red-50 rounded-lg space-y-3">
               <p className="text-sm text-gray-900">
-                Desconectar remove o webhook do RD Station e apaga os tokens de acesso. Os dados já
-                sincronizados continuam no CRM Assist, mas será preciso autorizar de novo para voltar a receber
-                dados do RD Station.
+                A integração volta ao início: o webhook é removido do RD Station e são apagados o acesso
+                autorizado, o Client ID e o Client Secret, o usuário responsável e o histórico de eventos recebidos.
+                A integração fica desativada. Leads e oportunidades já sincronizados continuam no CRM Assist.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={async () => {
-                    await executar("desconectar", api.rdDesconectar, "RD Station desconectado.");
+                    const ok = await executar(
+                      "desconectar",
+                      api.rdDesconectar,
+                      "Integração reiniciada. Configure novamente a partir do passo 1.",
+                    );
+                    if (ok) setClientSecret("");
                     setConfirmarDesconexao(false);
                   }}
                   disabled={ocupado !== null}
