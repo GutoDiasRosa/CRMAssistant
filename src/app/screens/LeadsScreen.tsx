@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, CloudOff, Info, Plus, RefreshCw, Search } from "lucide-react";
+import { CheckCircle2, CloudOff, ExternalLink, Info, Plus, Search } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 import LeadDialog from "../components/LeadDialog";
 import { useUsuario } from "../components/RequireAuth";
-import { api, PERFIS_VISAO_TOTAL, type LeadResumo, type LeadSalvo, type Vendedor } from "../lib/api";
+import {
+  api,
+  linkContatoRd,
+  PERFIS_VISAO_TOTAL,
+  type LeadResumo,
+  type LeadSalvo,
+  type Vendedor,
+} from "../lib/api";
 
 const TODOS = "todos";
 
@@ -159,9 +166,13 @@ export default function LeadsScreen() {
             <ul className="divide-y divide-gray-200">
               {leads.map((lead) => (
                 <li key={lead.id}>
-                  <button
+                  {/* div clicável (e não <button>): a linha contém o link para o RD. */}
+                  <div
+                    role="link"
+                    tabIndex={0}
                     onClick={() => navigate(`/leads/${lead.id}`)}
-                    className="w-full text-left px-5 py-4 hover:bg-gray-50 grid gap-1 lg:gap-4 lg:grid-cols-[2fr_2fr_1.2fr_1.5fr_1fr_1fr] lg:items-center"
+                    onKeyDown={(e) => e.key === "Enter" && navigate(`/leads/${lead.id}`)}
+                    className="w-full text-left px-5 py-4 hover:bg-gray-50 cursor-pointer grid gap-1 lg:gap-4 lg:grid-cols-[2fr_2fr_1.2fr_1.5fr_1fr_1fr] lg:items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B4F8A]"
                   >
                     <span className="text-base text-gray-900 truncate">{lead.nome || "Sem nome"}</span>
                     <span className="text-sm text-gray-600 truncate">{lead.email ?? "—"}</span>
@@ -172,17 +183,24 @@ export default function LeadsScreen() {
                       <span className="lg:hidden"> {lead.oportunidades === 1 ? "oportunidade" : "oportunidades"}</span>
                     </span>
                     <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                      {lead.sincronizado ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5" /> Sincronizado
-                        </>
+                      {lead.rd_lead_id ? (
+                        <a
+                          href={linkContatoRd(lead.rd_lead_id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Abrir o contato no RD Station CRM"
+                          className="inline-flex items-center gap-1.5 text-[#1B4F8A] hover:underline"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Abrir no RD
+                        </a>
                       ) : (
                         <>
                           <CloudOff className="w-3.5 h-3.5" /> Só no CRM Assist
                         </>
                       )}
                     </span>
-                  </button>
+                  </div>
                 </li>
               ))}
             </ul>

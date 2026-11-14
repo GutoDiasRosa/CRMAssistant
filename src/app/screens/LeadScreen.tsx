@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, CloudOff, Info, Mail, Pencil, Phone, Plus, RefreshCw, User } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CloudOff,
+  ExternalLink,
+  Info,
+  Mail,
+  Pencil,
+  Phone,
+  Plus,
+  RefreshCw,
+  User,
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import LeadDialog from "../components/LeadDialog";
 import OportunidadeDialog from "../components/OportunidadeDialog";
-import { api, formatarMoeda, rotuloStatus, type LeadDetalhe } from "../lib/api";
+import { api, formatarMoeda, linkContatoRd, rotuloStatus, type LeadDetalhe } from "../lib/api";
 
 type Aviso = { ok: boolean; texto: string };
 
@@ -89,9 +101,17 @@ export default function LeadScreen() {
                 </div>
               ))}
               <p className="flex items-center gap-2 text-xs text-gray-500">
-                {lead.sincronizado ? (
+                {lead.rd_lead_id ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5" /> Sincronizado com o RD Station CRM
+                    <RefreshCw className="w-3.5 h-3.5" /> Sincronizado com o RD Station CRM ·{" "}
+                    <a
+                      href={linkContatoRd(lead.rd_lead_id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[#1B4F8A] hover:underline"
+                    >
+                      Abrir no RD Station <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   </>
                 ) : (
                   <>

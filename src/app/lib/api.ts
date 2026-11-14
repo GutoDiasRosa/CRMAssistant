@@ -188,8 +188,12 @@ export type LeadResumo = {
   responsavel: { id: string; nome: string } | null;
   oportunidades: number;
   sincronizado: boolean;
+  rd_lead_id: string | null;
   updated_at: string;
 };
+
+// Página do contato no RD Station CRM (RD Vendas); exige estar logado no RD.
+export const linkContatoRd = (rdId: string) => `https://crm.rdstation.com/app#/contacts/${rdId}`;
 
 export type LeadDetalhe = Omit<LeadResumo, "oportunidades"> & {
   oportunidades: { id: string; nome: string; etapa_funil: string | null; valor: number | null; status: string | null }[];
