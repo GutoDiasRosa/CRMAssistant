@@ -13,6 +13,7 @@ import {
   User,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
+import { AnotacoesPanel } from "../components/Anotacoes";
 import LeadDialog from "../components/LeadDialog";
 import OportunidadeDialog from "../components/OportunidadeDialog";
 import { api, formatarMoeda, linkContatoRd, rotuloStatus, type LeadDetalhe } from "../lib/api";
@@ -158,6 +159,8 @@ export default function LeadScreen() {
               )}
             </section>
           </div>
+
+          <AnotacoesPanel leadId={lead.id} />
         </div>
       )}
 

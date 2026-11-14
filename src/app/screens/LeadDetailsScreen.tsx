@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
+import { AnotacoesPanel } from "../components/Anotacoes";
 import OportunidadeDialog from "../components/OportunidadeDialog";
 import {
   api,
@@ -24,11 +25,6 @@ import {
   type OportunidadeSalva,
   type StatusOportunidade,
 } from "../lib/api";
-
-const formatarData = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString("pt-BR")} - ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-};
 
 const COR_STATUS: Record<string, string> = {
   won: "bg-[#10B981]/10 text-[#047857]",
@@ -230,33 +226,8 @@ export default function LeadDetailsScreen() {
               )}
             </section>
 
-            {/* Histórico de Interações */}
-            <section>
-              <h2 className="text-base text-gray-900 mb-4">Histórico de interações</h2>
-              {op.interacoes.length === 0 ? (
-                <p className="text-sm text-gray-500">Nenhuma interação registrada.</p>
-              ) : (
-                <div className="relative pl-1">
-                  <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-200" />
-                  <div className="space-y-6">
-                    {op.interacoes.map((evento) => (
-                      <div key={evento.id} className="flex gap-4">
-                        <div className="relative z-10">
-                          <div className="w-10 h-10 bg-[#1B4F8A] rounded-full flex items-center justify-center flex-shrink-0">
-                            <div className="w-3 h-3 bg-white rounded-full" />
-                          </div>
-                        </div>
-                        <div className="flex-1 pt-1">
-                          <p className="text-base text-gray-900 mb-1 capitalize">{evento.tipo}</p>
-                          <p className="text-sm text-gray-600 mb-1">{evento.descricao}</p>
-                          <p className="text-xs text-gray-400">{formatarData(evento.created_at)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
+            {/* Anotações (agenda) da oportunidade */}
+            <AnotacoesPanel oportunidadeId={op.id} />
           </div>
         </div>
       )}

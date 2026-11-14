@@ -6,6 +6,7 @@ import FunnelScreen from "./screens/FunnelScreen";
 import ChatbotScreen from "./screens/ChatbotScreen";
 import LeadDetailsScreen from "./screens/LeadDetailsScreen";
 import LeadsScreen from "./screens/LeadsScreen";
+import AgendaScreen from "./screens/AgendaScreen";
 import LeadScreen from "./screens/LeadScreen";
 import TeamPerformanceScreen from "./screens/TeamPerformanceScreen";
 import SettingsScreen from "./screens/SettingsScreen";
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "/lead/:id", Component: LeadDetailsScreen },
       { path: "/leads", Component: LeadsScreen },
       { path: "/leads/:id", Component: LeadScreen },
+      { path: "/agenda", Component: AgendaScreen },
       { path: "/team", Component: TeamPerformanceScreen },
       { path: "/settings", Component: SettingsScreen },
       { path: "/usuarios", Component: UsersScreen },

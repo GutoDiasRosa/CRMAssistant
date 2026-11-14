@@ -192,6 +192,38 @@ export type LeadResumo = {
   updated_at: string;
 };
 
+export type TipoAnotacao = "nota" | "ligacao" | "email" | "whatsapp" | "reuniao" | "visita";
+
+export const TIPO_ANOTACAO: Record<TipoAnotacao, string> = {
+  nota: "Nota",
+  ligacao: "Ligação",
+  email: "E-mail",
+  whatsapp: "WhatsApp",
+  reuniao: "Reunião",
+  visita: "Visita",
+};
+
+export type Anotacao = {
+  id: string;
+  tipo: TipoAnotacao;
+  descricao: string;
+  data: string; // quando o contato aconteceu
+  retorno_em: string | null; // AAAA-MM-DD do próximo contato combinado
+  autor: { id: string; nome: string } | null;
+  lead: { id: string; nome: string } | null;
+  oportunidade: { id: string; nome: string } | null;
+  pode_editar: boolean;
+};
+
+export type AnotacaoEntrada = {
+  lead_id?: string | null;
+  oportunidade_id?: string | null;
+  tipo: TipoAnotacao;
+  descricao: string;
+  data?: string | null;
+  retorno_em?: string | null;
+};
+
 // Página do contato no RD Station CRM (RD Vendas); exige estar logado no RD.
 export const linkContatoRd = (rdId: string) => `https://crm.rdstation.com/app#/contacts/${rdId}`;
 
@@ -267,6 +299,21 @@ export const api = {
     return request<LeadResumo[]>(`/api/crm/leads${query ? `?${query}` : ""}`);
   },
   lead: (id: string) => request<LeadDetalhe>(`/api/crm/leads/${id}`),
+  anotacoes: (filtros: { lead_id?: string; oportunidade_id?: string; inicio?: string; fim?: string; usuario_id?: string }) => {
+    const params = new URLSearchParams();
+    for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
+    return request<Anotacao[]>(`/api/crm/anotacoes?${params.toString()}`);
+  },
+  retornos: (filtros: { ate: string; de?: string; usuario_id?: string }) => {
+    const params = new URLSearchParams();
+    for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
+    return request<Anotacao[]>(`/api/crm/anotacoes/retornos?${params.toString()}`);
+  },
+  criarAnotacao: (dados: AnotacaoEntrada) =>
+    request<Anotacao>("/api/crm/anotacoes", { method: "POST", body: JSON.stringify(dados) }),
+  atualizarAnotacao: (id: string, dados: AnotacaoEntrada) =>
+    request<Anotacao>(`/api/crm/anotacoes/${id}`, { method: "PUT", body: JSON.stringify(dados) }),
+  excluirAnotacao: (id: string) => request<void>(`/api/crm/anotacoes/${id}`, { method: "DELETE" }),
   criarLead: (dados: LeadEntrada) =>
     request<LeadSalvo>("/api/crm/leads", { method: "POST", body: JSON.stringify(dados) }),
   atualizarLead: (id: string, dados: LeadEntrada) =>
