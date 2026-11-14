@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Settings, TrendingUp, Users, BarChart3, PlugZap } from "lucide-react";
+import { Home, MessageSquare, Settings, TrendingUp, Users, BarChart3, PlugZap, Contact } from "lucide-react";
 import type { Perfil } from "../lib/api";
 
 export type NavItem = {
@@ -15,6 +15,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "Início", path: "/dashboard", mobile: true },
   { icon: TrendingUp, label: "Funil", path: "/funnel", match: ["/lead/"], mobile: true },
+  { icon: Contact, label: "Leads", path: "/leads", match: ["/leads/"] },
   { icon: MessageSquare, label: "Assistente", path: "/chat", mobile: true },
   { icon: BarChart3, label: "Performance do time", path: "/team" },
   { icon: Users, label: "Usuários", path: "/usuarios", somenteAdmin: true },

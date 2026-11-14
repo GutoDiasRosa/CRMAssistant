@@ -25,10 +25,12 @@ type Props = {
   onFechar: () => void;
   // Presente: edita esta oportunidade. Ausente: cria uma nova.
   oportunidade?: OportunidadeDetalhe | null;
+  // Criação a partir de um lead: o contato vem preenchido e a oportunidade fica ligada a ele.
+  leadInicial?: { id: string; nome: string; email: string | null; telefone: string | null } | null;
   onSalva: (resultado: OportunidadeSalva) => void;
 };
 
-export default function OportunidadeDialog({ aberto, onFechar, oportunidade, onSalva }: Props) {
+export default function OportunidadeDialog({ aberto, onFechar, oportunidade, leadInicial, onSalva }: Props) {
   const usuario = useUsuario();
   const veTodoTime = PERFIS_VISAO_TOTAL.includes(usuario.perfil);
   const [etapas, setEtapas] = useState<Etapas | null>(null);
@@ -57,9 +59,10 @@ export default function OportunidadeDialog({ aberto, onFechar, oportunidade, onS
     const statusAtual = op?.status;
     setStatus(ehStatus(statusAtual) ? statusAtual : "ongoing"); // "open" (dados antigos) vira "ongoing"
     setResponsavelId(op?.responsavel?.id ?? usuario.id);
-    setContatoNome(op?.contato?.nome ?? "");
-    setContatoEmail(op?.contato?.email ?? "");
-    setContatoTelefone(op?.contato?.telefone ?? "");
+    const contato = op ? op.contato : leadInicial;
+    setContatoNome(contato?.nome ?? "");
+    setContatoEmail(contato?.email ?? "");
+    setContatoTelefone(contato?.telefone ?? "");
     setErro(null);
     setEtapas(null);
     api
@@ -74,7 +77,7 @@ export default function OportunidadeDialog({ aberto, onFechar, oportunidade, onS
       })
       .catch(() => setEtapas({ origem: "local", funis: [], aviso: "Não foi possível carregar as etapas." }));
     if (veTodoTime) api.vendedores().then(setVendedores).catch(() => setVendedores([]));
-  }, [aberto, oportunidade, usuario.id, veTodoTime]);
+  }, [aberto, oportunidade, leadInicial, usuario.id, veTodoTime]);
 
   const doRd = etapas?.origem === "rd";
   const variosFunis = (etapas?.funis.length ?? 0) > 1;
@@ -99,6 +102,7 @@ export default function OportunidadeDialog({ aberto, onFechar, oportunidade, onS
       etapa_rd_id: doRd ? etapaRdId || null : null,
       status,
       usuario_id: veTodoTime ? responsavelId || null : null,
+      lead_id: !oportunidade && leadInicial ? leadInicial.id : null,
       contato: temContato
         ? {
             nome: contatoNome.trim(),

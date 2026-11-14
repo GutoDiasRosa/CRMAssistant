@@ -175,8 +175,35 @@ export type OportunidadeEntrada = {
   etapa_rd_id: string | null;
   status: StatusOportunidade;
   usuario_id: string | null;
+  // Lead já existente (criação a partir da tela do lead).
+  lead_id?: string | null;
   contato: { nome: string; email: string | null; telefone: string | null } | null;
 };
+
+export type LeadResumo = {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  responsavel: { id: string; nome: string } | null;
+  oportunidades: number;
+  sincronizado: boolean;
+  updated_at: string;
+};
+
+export type LeadDetalhe = Omit<LeadResumo, "oportunidades"> & {
+  oportunidades: { id: string; nome: string; etapa_funil: string | null; valor: number | null; status: string | null }[];
+  created_at: string;
+};
+
+export type LeadEntrada = {
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  usuario_id: string | null;
+};
+
+export type LeadSalvo = { lead: LeadDetalhe; rd: { enviado: boolean; mensagem: string | null } };
 
 // Resultado de salvar: a oportunidade e se ela chegou ao RD Station CRM.
 export type OportunidadeSalva = {
@@ -229,6 +256,17 @@ export const api = {
   },
   metricas: () => request<Metricas>("/api/crm/metricas"),
   etapas: () => request<Etapas>("/api/crm/etapas"),
+  leads: (filtros: { busca?: string; usuario_id?: string } = {}) => {
+    const params = new URLSearchParams();
+    for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
+    const query = params.toString();
+    return request<LeadResumo[]>(`/api/crm/leads${query ? `?${query}` : ""}`);
+  },
+  lead: (id: string) => request<LeadDetalhe>(`/api/crm/leads/${id}`),
+  criarLead: (dados: LeadEntrada) =>
+    request<LeadSalvo>("/api/crm/leads", { method: "POST", body: JSON.stringify(dados) }),
+  atualizarLead: (id: string, dados: LeadEntrada) =>
+    request<LeadSalvo>(`/api/crm/leads/${id}`, { method: "PUT", body: JSON.stringify(dados) }),
   oportunidade: (id: string) => request<OportunidadeDetalhe>(`/api/crm/oportunidades/${id}`),
   criarOportunidade: (dados: OportunidadeEntrada) =>
     request<OportunidadeSalva>("/api/crm/oportunidades", { method: "POST", body: JSON.stringify(dados) }),
