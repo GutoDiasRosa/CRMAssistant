@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CheckCircle2, ChevronDown, Info, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
+import OportunidadeDialog from "../components/OportunidadeDialog";
 import { useUsuario } from "../components/RequireAuth";
 import {
   DropdownMenu,
@@ -14,19 +15,20 @@ import {
   formatarMoeda,
   PERFIS_VISAO_TOTAL,
   type OportunidadeKanban,
+  type OportunidadeSalva,
   type Vendedor,
 } from "../lib/api";
 import { ehPeriodo, inicioDoPeriodo, PERIODOS, type PeriodoId } from "../lib/periodos";
 
-// Ordem das etapas conhecidas; etapas novas vindas do RD Station aparecem depois.
+// Ordem usada sem o RD Station; conectado, vale a ordem das etapas do funil do RD.
 const ORDEM_ETAPAS = ["Prospecção", "Qualificado", "Proposta", "Proposta enviada", "Negociação"];
 
 type Etapa = { name: string; leads: OportunidadeKanban[] };
 
-function ordenarEtapas(kanban: Record<string, OportunidadeKanban[]>): Etapa[] {
+function ordenarEtapas(kanban: Record<string, OportunidadeKanban[]>, ordem: string[]): Etapa[] {
   const posicao = (nome: string) => {
-    const i = ORDEM_ETAPAS.indexOf(nome);
-    return i === -1 ? ORDEM_ETAPAS.length : i;
+    const i = ordem.indexOf(nome);
+    return i === -1 ? ordem.length : i;
   };
   return Object.entries(kanban)
     .map(([name, leads]) => ({ name, leads }))
@@ -60,6 +62,28 @@ export default function FunnelScreen() {
   const setPeriodo = (valor: PeriodoId) => setFiltro("periodo", valor);
   const setVendedorId = (valor: string) => setFiltro("vendedor", valor);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+  const [ordemEtapas, setOrdemEtapas] = useState<string[]>(ORDEM_ETAPAS);
+  const [novaAberta, setNovaAberta] = useState(false);
+  const [recarga, setRecarga] = useState(0);
+  const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  useEffect(() => {
+    api
+      .etapas()
+      .then((e) => {
+        if (e.origem === "rd") setOrdemEtapas(e.funis.flatMap((f) => f.etapas.map((et) => et.nome)));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const oportunidadeCriada = ({ rd }: OportunidadeSalva) => {
+    setRecarga((n) => n + 1);
+    setAviso(
+      rd.enviado
+        ? { ok: true, texto: "Oportunidade criada e enviada ao RD Station." }
+        : { ok: false, texto: rd.mensagem ?? "Oportunidade criada." },
+    );
+  };
 
   // SDR e Closer só enxergam as próprias oportunidades (RF07): o filtro de vendedor não se aplica.
   useEffect(() => {
@@ -80,7 +104,7 @@ export default function FunnelScreen() {
         inicio: inicioDoPeriodo(periodo),
       })
       .then((kanban) => {
-        if (!cancelado) setFunnelStages(ordenarEtapas(kanban));
+        if (!cancelado) setFunnelStages(ordenarEtapas(kanban, ordemEtapas));
       })
       .catch((e: Error) => {
         if (!cancelado) setErro(e.message);
@@ -91,7 +115,7 @@ export default function FunnelScreen() {
     return () => {
       cancelado = true;
     };
-  }, [periodo, vendedorId]);
+  }, [periodo, vendedorId, recarga, ordemEtapas]);
 
   const filtrando = periodo !== "todos" || vendedorId !== TODOS;
   const labelPeriodo = PERIODOS.find((p) => p.id === periodo)?.label ?? "Período";
@@ -108,6 +132,7 @@ export default function FunnelScreen() {
     switch (status) {
       case "won":
         return "bg-[#10B981]";
+      case "ongoing":
       case "open":
         return "bg-[#F59E0B]";
       case "lost":
@@ -168,8 +193,33 @@ export default function FunnelScreen() {
               Limpar filtros
             </button>
           )}
+
+          <button
+            onClick={() => setNovaAberta(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1B4F8A] text-white rounded-lg text-sm hover:bg-[#153d6e] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nova oportunidade
+          </button>
         </div>
       </header>
+
+      {aviso && (
+        <div
+          role="status"
+          className={`mx-6 lg:mx-10 mt-4 flex items-start gap-3 p-3 rounded-lg text-sm ${
+            aviso.ok ? "bg-[#10B981]/10 text-[#047857]" : "bg-[#F59E0B]/10 text-[#92400E]"
+          }`}
+        >
+          {aviso.ok ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> : <Info className="w-5 h-5 flex-shrink-0" />}
+          <span className="flex-1">{aviso.texto}</span>
+          <button onClick={() => setAviso(null)} className="text-xs underline flex-shrink-0">
+            Fechar
+          </button>
+        </div>
+      )}
+
+      <OportunidadeDialog aberto={novaAberta} onFechar={() => setNovaAberta(false)} onSalva={oportunidadeCriada} />
 
       {erro && <p className="px-6 lg:px-10 py-4 text-sm text-[#EF4444]">{erro}</p>}
       {!erro && carregando && funnelStages === null && (
@@ -179,7 +229,7 @@ export default function FunnelScreen() {
         <p className="px-6 lg:px-10 py-4 text-sm text-gray-500">
           {filtrando
             ? "Nenhuma oportunidade encontrada para os filtros selecionados."
-            : "Nenhuma oportunidade sincronizada do RD Station ainda."}
+            : "Nenhuma oportunidade ainda. Crie a primeira ou aguarde as que vierem do RD Station."}
         </p>
       )}
 

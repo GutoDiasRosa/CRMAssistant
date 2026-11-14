@@ -47,7 +47,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    const detail = typeof body?.detail === "string" ? body.detail : `Erro ${response.status}`;
+    // FastAPI devolve texto nos erros da aplicação e uma lista nos de validação.
+    const detail =
+      typeof body?.detail === "string"
+        ? body.detail
+        : Array.isArray(body?.detail) && body.detail.length
+          ? body.detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join("; ")
+          : `Erro ${response.status}`;
     throw new ApiError(response.status, detail);
   }
   if (response.status === 204) return undefined as T;
@@ -128,12 +134,61 @@ export type Sincronizacao = {
   created_at: string;
 };
 
+// Status de negociação do RD Station CRM ("open" vem de dados antigos de demonstração).
+export type StatusOportunidade = "ongoing" | "won" | "lost" | "paused";
+
+export const STATUS_OPORTUNIDADE: Record<StatusOportunidade, string> = {
+  ongoing: "Em andamento",
+  won: "Ganha",
+  lost: "Perdida",
+  paused: "Pausada",
+};
+
+export function rotuloStatus(status: string | null): string {
+  if (status === "open") return STATUS_OPORTUNIDADE.ongoing;
+  return STATUS_OPORTUNIDADE[status as StatusOportunidade] ?? status ?? "—";
+}
+
+// Funis e etapas: do RD Station CRM quando conectado; senão, as etapas já usadas no CRM Assist.
+export type FunilVendas = { id: string | null; nome: string; etapas: { id: string | null; nome: string }[] };
+export type Etapas = { origem: "rd" | "local"; funis: FunilVendas[]; aviso: string | null };
+
+export type OportunidadeDetalhe = {
+  id: string;
+  rd_deal_id: string | null;
+  nome: string;
+  valor: number | null;
+  status: string | null;
+  etapa_funil: string | null;
+  rd_stage_id: string | null;
+  responsavel: { id: string; nome: string } | null;
+  contato: { id: string; nome: string; email: string | null; telefone: string | null } | null;
+  interacoes: { id: string; tipo: string; descricao: string; created_at: string }[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type OportunidadeEntrada = {
+  nome: string;
+  valor: number | null;
+  etapa: string | null;
+  etapa_rd_id: string | null;
+  status: StatusOportunidade;
+  usuario_id: string | null;
+  contato: { nome: string; email: string | null; telefone: string | null } | null;
+};
+
+// Resultado de salvar: a oportunidade e se ela chegou ao RD Station CRM.
+export type OportunidadeSalva = {
+  oportunidade: OportunidadeDetalhe;
+  rd: { enviado: boolean; mensagem: string | null };
+};
+
 export type ConexaoRd = {
   ativo: boolean;
   // Credenciais do app (OAuth)
   client_id: string | null;
   has_client_secret: boolean;
-  credenciais_origem: "tela" | "env" | null;
   redirect_uri: string;
   // Usuário responsável pelos registros novos
   usuario_integracao: { id: string; nome: string } | null;
@@ -142,12 +197,9 @@ export type ConexaoRd = {
   token_status: "ausente" | "valido" | "expirado";
   conectado_em: string | null;
   token_expira_em: string | null;
-  // Tokens da API (o privado nunca volta para a tela)
-  token_publico: string | null;
-  has_token_privado: boolean;
-  // Webhook
-  webhook_url: string;
-  webhook_secret_configurado: boolean;
+  // Webhooks criados pelo CRM Assist no RD Station ao concluir a autorização
+  webhooks: { event_type: string; uuid: string | null }[];
+  webhook_erro: string | null;
   ultima_sincronizacao: string | null;
   ultima_falha: { em: string; mensagem: string } | null;
   falhas_ultimos_7_dias: number;
@@ -176,6 +228,12 @@ export const api = {
     return request<PerformanceTime>(`/api/crm/performance${query ? `?${query}` : ""}`);
   },
   metricas: () => request<Metricas>("/api/crm/metricas"),
+  etapas: () => request<Etapas>("/api/crm/etapas"),
+  oportunidade: (id: string) => request<OportunidadeDetalhe>(`/api/crm/oportunidades/${id}`),
+  criarOportunidade: (dados: OportunidadeEntrada) =>
+    request<OportunidadeSalva>("/api/crm/oportunidades", { method: "POST", body: JSON.stringify(dados) }),
+  atualizarOportunidade: (id: string, dados: OportunidadeEntrada) =>
+    request<OportunidadeSalva>(`/api/crm/oportunidades/${id}`, { method: "PUT", body: JSON.stringify(dados) }),
   sincronizacoes: () => request<Sincronizacao[]>("/api/crm/sincronizacoes"),
   rdStatus: () => request<{ connected: boolean }>("/oauth/rd/status"),
   chat: (mensagem: string, sessionId: string | null) =>
@@ -192,13 +250,10 @@ export const api = {
     }),
   rdSalvarConfiguracao: (dados: { ativo?: boolean; usuario_integracao_id?: string | null }) =>
     request<void>("/oauth/rd/configuracao", { method: "PUT", body: JSON.stringify(dados) }),
-  rdSalvarTokensApi: (token_publico: string, token_privado: string | null) =>
-    request<void>("/oauth/rd/tokens-api", {
-      method: "PUT",
-      body: JSON.stringify({ token_publico, token_privado }),
-    }),
-  rdRegenerarWebhookToken: () => request<void>("/oauth/rd/webhook-token", { method: "POST" }),
-  rdTestar: () => request<{ conta: string | null }>("/oauth/rd/testar", { method: "POST" }),
+  rdCriarWebhook: () => request<void>("/oauth/rd/webhook", { method: "POST" }),
+  // Cria (ou atualiza) um contato de teste no RD Station CRM
+  rdTestar: () =>
+    request<{ email: string; contato_id: string; criado: boolean }>("/oauth/rd/testar", { method: "POST" }),
   rdUrlAutorizacao: () => request<{ url: string }>("/oauth/rd/authorize-url", { method: "POST" }),
   rdDesconectar: () => request<void>("/oauth/rd/conexao", { method: "DELETE" }),
   // Gestão de usuários (somente perfil ADMIN)

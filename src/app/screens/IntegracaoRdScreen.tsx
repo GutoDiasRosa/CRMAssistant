@@ -18,10 +18,15 @@ import { useUsuario } from "../components/RequireAuth";
 import { Switch } from "../components/ui/switch";
 import { api, PERFIL_LABEL, type ConexaoRd, type Usuario } from "../lib/api";
 
-const RD_LINKS = {
-  appStore: "https://appstore.rdstation.com/pt-BR/publisher",
-  tokens: "https://app.rdstation.com.br/integracoes/tokens",
-  webhooks: "https://app.rdstation.com.br/integracoes/webhooks",
+const RD_APP_STORE = "https://appstore.rdstation.com/pt-BR/publisher";
+
+// Webhooks que o CRM Assist cria no RD Station ao concluir a autorização.
+const EVENTO_WEBHOOK: Record<string, string> = {
+  crm_deal_created: "Negociação criada",
+  crm_deal_updated: "Negociação alterada",
+  crm_deal_deleted: "Negociação excluída",
+  crm_contact_created: "Contato criado",
+  crm_contact_updated: "Contato alterado",
 };
 
 const inputClass =
@@ -174,16 +179,12 @@ export default function IntegracaoRdScreen() {
 
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [tokenPublico, setTokenPublico] = useState("");
-  const [tokenPrivado, setTokenPrivado] = useState("");
   const [confirmarDesconexao, setConfirmarDesconexao] = useState(false);
-  const [confirmarNovaUrl, setConfirmarNovaUrl] = useState(false);
 
   const carregar = async () => {
     const c = await api.rdConexao();
     setConexao(c);
     setClientId(c.client_id ?? "");
-    setTokenPublico(c.token_publico ?? "");
     setErroCarga(null);
   };
 
@@ -205,10 +206,14 @@ export default function IntegracaoRdScreen() {
   useEffect(() => {
     const resultado = searchParams.get("rd");
     if (!resultado) return;
+    const motivo = searchParams.get("motivo");
+    // Em "conectado", o motivo é a falha ao criar o webhook (a autorização deu certo).
     setAviso(
-      resultado === "conectado"
-        ? { tipo: "sucesso", texto: "RD Station autorizado com sucesso." }
-        : { tipo: "erro", texto: searchParams.get("motivo") ?? "Não foi possível conectar ao RD Station." },
+      resultado !== "conectado"
+        ? { tipo: "erro", texto: motivo ?? "Não foi possível conectar ao RD Station." }
+        : motivo
+          ? { tipo: "erro", texto: `RD Station autorizado, mas o webhook não foi criado: ${motivo}` }
+          : { tipo: "sucesso", texto: "RD Station autorizado e webhook criado. A integração está pronta." },
     );
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -241,14 +246,10 @@ export default function IntegracaoRdScreen() {
     if (ok) setClientSecret("");
   };
 
-  const salvarTokens = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await executar(
-      "tokens",
-      () => api.rdSalvarTokensApi(tokenPublico.trim(), tokenPrivado.trim() || null),
-      "Tokens da API salvos.",
-    );
-    if (ok) setTokenPrivado("");
+  const criarWebhook = async () => {
+    const ok = await executar("webhook", api.rdCriarWebhook, "Webhook criado no RD Station.");
+    // A falha fica registrada no servidor: recarrega para mostrá-la no passo do webhook.
+    if (!ok) carregar().catch(() => undefined);
   };
 
   const conectar = async () => {
@@ -268,11 +269,13 @@ export default function IntegracaoRdScreen() {
     setAviso(null);
     setOcupado("testar");
     try {
-      const { conta } = await api.rdTestar();
+      const { email, criado } = await api.rdTestar();
       setAviso({
         tipo: "sucesso",
-        texto: conta ? `Conexão funcionando (conta: ${conta}).` : "Conexão com o RD Station funcionando.",
+        texto: `Conexão funcionando: contato de teste (${email}) ${criado ? "criado" : "atualizado"} no RD Station CRM. Com o webhook ativo, ele volta para o CRM Assist em alguns segundos.`,
       });
+      // Dá tempo de o RD Station chamar o webhook e atualiza o "Último dado recebido".
+      setTimeout(() => carregar().catch(() => undefined), 8000);
     } catch (err) {
       setAviso({ tipo: "erro", texto: (err as Error).message });
     } finally {
@@ -314,8 +317,8 @@ export default function IntegracaoRdScreen() {
   }
 
   const credenciaisSalvas = !!conexao.client_id && conexao.has_client_secret;
-  const tokensSalvos = !!conexao.token_publico && conexao.has_token_privado;
   const autorizado = conexao.token_status === "valido";
+  const webhookAtivo = conexao.webhooks.length > 0;
   const statusConexao = !conexao.ativo
     ? { texto: "Integração desativada", cor: "text-gray-500" }
     : conexao.token_status === "valido"
@@ -360,6 +363,7 @@ export default function IntegracaoRdScreen() {
                 <button
                   onClick={testar}
                   disabled={ocupado !== null}
+                  title="Cria (ou atualiza) um contato de teste no RD Station CRM"
                   className="px-4 py-2 border border-[#1B4F8A] text-[#1B4F8A] rounded-lg hover:bg-[#EBF2F9] transition-colors flex items-center gap-2 text-sm disabled:opacity-60"
                 >
                   <RefreshCw className={`w-4 h-4 ${ocupado === "testar" ? "animate-spin" : ""}`} />
@@ -399,8 +403,9 @@ export default function IntegracaoRdScreen() {
           {confirmarDesconexao && (
             <div className="mt-5 p-4 bg-red-50 rounded-lg space-y-3">
               <p className="text-sm text-gray-900">
-                Desconectar apaga os tokens de acesso. Os dados já sincronizados continuam no CRM Assist, mas
-                será preciso autorizar de novo para voltar a acessar o RD Station.
+                Desconectar remove o webhook do RD Station e apaga os tokens de acesso. Os dados já
+                sincronizados continuam no CRM Assist, mas será preciso autorizar de novo para voltar a receber
+                dados do RD Station.
               </p>
               <div className="flex gap-2">
                 <button
@@ -428,8 +433,9 @@ export default function IntegracaoRdScreen() {
         <Passo numero={1} titulo="Ativar integração" feito={conexao.ativo} status="Integração ativada">
           <div className="flex items-center justify-between gap-4">
             <label htmlFor="rd-ativo" className="text-sm text-gray-600">
-              Quando ativa, o CRM Assist recebe leads e oportunidades enviados pelo RD Station. Desativada, os
-              eventos recebidos são registrados e ignorados, sem perder a configuração.
+              Quando ativa, o CRM Assist recebe contatos e negociações do RD Station CRM e envia para lá as
+              oportunidades criadas ou alteradas aqui. Desativada, nada é enviado e os eventos recebidos são
+              registrados e ignorados, sem perder a configuração.
             </label>
             <Switch
               id="rd-ativo"
@@ -450,7 +456,9 @@ export default function IntegracaoRdScreen() {
         <Passo numero={2} titulo="Criar um aplicativo no RD Station" feito={credenciaisSalvas} status="Credenciais salvas">
           <ol className="text-sm text-gray-600 space-y-1 list-decimal pl-5">
             <li>
-              Crie um aplicativo na <LinkRd href={RD_LINKS.appStore}>área de desenvolvedores do RD Station</LinkRd>.
+              Crie um aplicativo para o <strong className="font-normal text-gray-900">RD Station CRM</strong> na{" "}
+              <LinkRd href={RD_APP_STORE}>área de desenvolvedores do RD Station</LinkRd>. Credenciais de um app do
+              RD Station Marketing não funcionam aqui.
             </li>
             <li>Na criação do app, informe como URL de callback a URL abaixo.</li>
             <li>Com o app criado, copie o Client ID e o Client Secret para os campos abaixo.</li>
@@ -481,13 +489,8 @@ export default function IntegracaoRdScreen() {
               label="Client Secret"
               valor={clientSecret}
               onChange={setClientSecret}
-              salvo={conexao.has_client_secret && conexao.credenciais_origem === "tela"}
+              salvo={conexao.has_client_secret}
             />
-            {conexao.credenciais_origem === "env" && (
-              <p className="text-xs text-gray-500">
-                Hoje as credenciais vêm do arquivo .env do servidor. Salvar aqui passa a usar as da tela.
-              </p>
-            )}
             {conexao.connected && (
               <p className="text-xs text-[#B45309] flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -508,8 +511,8 @@ export default function IntegracaoRdScreen() {
           status="Usuário definido"
         >
           <p className="text-sm text-gray-600">
-            Leads e oportunidades novos que chegarem do RD Station sem responsável serão atribuídos a este
-            usuário.
+            Contatos e negociações que chegarem do RD Station CRM com um responsável sem usuário correspondente no
+            CRM Assist (mesmo e-mail) serão atribuídos a este usuário.
           </p>
           <div>
             <label htmlFor="usuario-integracao" className="block text-sm text-gray-700 mb-2">
@@ -542,7 +545,8 @@ export default function IntegracaoRdScreen() {
         <Passo numero={4} titulo="Autorizar acesso ao RD Station" feito={autorizado} status="Acesso autorizado">
           <p className="text-sm text-gray-600">
             Você será levado ao RD Station para entrar com a conta da empresa e permitir o acesso do CRM Assist.
-            Depois disso, volta automaticamente para esta tela. O token é renovado sozinho antes de expirar.
+            Depois disso, volta automaticamente para esta tela e o webhook é criado no RD Station. O token é
+            renovado sozinho antes de expirar.
           </p>
           {conexao.token_status === "expirado" && (
             <p className="text-xs text-[#B45309] flex items-start gap-2">
@@ -569,65 +573,29 @@ export default function IntegracaoRdScreen() {
           )}
         </Passo>
 
-        {/* 5. Tokens público e privado */}
-        <Passo numero={5} titulo="Informar token público e privado" feito={tokensSalvos} status="Tokens salvos">
+        {/* 5. Webhook criado automaticamente */}
+        <Passo numero={5} titulo="Webhook no RD Station" feito={webhookAtivo} status="Criado automaticamente">
           <p className="text-sm text-gray-600">
-            No RD Station, acesse Integrações › Dados de integração (API) e copie os tokens público e privado.{" "}
-            <LinkRd href={RD_LINKS.tokens}>Ver os tokens no RD Station</LinkRd>
+            Ao concluir a autorização, o CRM Assist cadastra sozinho no RD Station CRM os webhooks que avisam
+            quando negociações e contatos são criados, alterados ou excluídos. Não é preciso configurar nada no RD
+            Station.
           </p>
-          <form onSubmit={salvarTokens} className="space-y-4">
-            <div>
-              <label htmlFor="token-publico" className="block text-sm text-gray-700 mb-2">
-                Token público
-              </label>
-              <input
-                id="token-publico"
-                required
-                autoComplete="off"
-                value={tokenPublico}
-                onChange={(e) => setTokenPublico(e.target.value)}
-                className={inputClass}
-              />
+          {webhookAtivo && (
+            <ul className="text-sm text-gray-700 space-y-1">
+              {conexao.webhooks.map((w) => (
+                <li key={w.event_type} className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#10B981] flex-shrink-0" />
+                  {EVENTO_WEBHOOK[w.event_type] ?? w.event_type}
+                </li>
+              ))}
+            </ul>
+          )}
+          {conexao.webhook_erro && (
+            <div role="alert" className="p-3 bg-[#EF4444]/10 rounded-lg text-xs text-[#B91C1C] flex items-start gap-2">
+              <XCircle className="w-4 h-4 flex-shrink-0" />
+              <span className="break-words">Webhook não criado: {conexao.webhook_erro}</span>
             </div>
-            <CampoSegredo
-              id="token-privado"
-              label="Token privado"
-              valor={tokenPrivado}
-              onChange={setTokenPrivado}
-              salvo={conexao.has_token_privado}
-            />
-            <button type="submit" disabled={ocupado !== null} className={botaoSecundario}>
-              {ocupado === "tokens" ? "Salvando..." : "Salvar tokens"}
-            </button>
-          </form>
-        </Passo>
-
-        {/* 6. Webhook */}
-        <Passo
-          numero={6}
-          titulo="Configurar webhook no RD Station"
-          feito={conexao.ultima_sincronizacao !== null}
-          status="Recebendo dados"
-        >
-          <ol className="text-sm text-gray-600 space-y-1 list-decimal pl-5">
-            <li>
-              No RD Station, acesse Integrações › Webhooks › Configurar.{" "}
-              <LinkRd href={RD_LINKS.webhooks}>Abrir no RD Station</LinkRd>
-            </li>
-            <li>Clique em "Criar webhook" e escolha um nome.</li>
-            <li>No campo URL, cole a URL abaixo.</li>
-            <li>Escolha "Conversão" no campo Gatilho e salve.</li>
-          </ol>
-          <CampoCopiavel
-            id="webhook-url"
-            label="URL do webhook"
-            valor={conexao.webhook_url}
-            ajuda="A URL contém um token secreto: não a compartilhe fora do RD Station."
-          />
-          <p className="text-xs text-gray-500">
-            Para testar, use "Verificar" na tela de webhooks do RD Station e escolha um lead. Ele deve aparecer
-            no funil do CRM Assist e o "Último dado recebido" acima é atualizado.
-          </p>
+          )}
 
           {conexao.ultima_falha && (
             <div role="alert" className="p-3 bg-[#EF4444]/10 rounded-lg text-xs text-[#B91C1C] space-y-1">
@@ -640,35 +608,16 @@ export default function IntegracaoRdScreen() {
             </div>
           )}
 
-          {confirmarNovaUrl ? (
-            <div className="p-4 bg-[#F59E0B]/10 rounded-lg space-y-3">
-              <p className="text-sm text-gray-900">
-                A URL atual deixará de funcionar imediatamente. Depois de gerar a nova, atualize-a no webhook do
-                RD Station.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={async () => {
-                    await executar("webhook", api.rdRegenerarWebhookToken, "Nova URL gerada. Atualize-a no RD Station.");
-                    setConfirmarNovaUrl(false);
-                  }}
-                  disabled={ocupado !== null}
-                  className="px-4 py-2 bg-[#1B4F8A] text-white rounded-lg text-sm hover:bg-[#153d6e] disabled:opacity-60"
-                >
-                  {ocupado === "webhook" ? "Gerando..." : "Gerar nova URL"}
-                </button>
-                <button
-                  onClick={() => setConfirmarNovaUrl(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
+          <button onClick={criarWebhook} disabled={!autorizado || ocupado !== null} className={botaoSecundario}>
+            {ocupado === "webhook" ? "Criando webhook..." : webhookAtivo ? "Recriar webhook" : "Criar webhook"}
+          </button>
+          {autorizado ? (
+            <p className="text-xs text-gray-500">
+              Para testar, use "Testar conexão" no topo da tela: um contato de teste é criado no RD Station CRM,
+              volta para o CRM Assist pelo webhook e atualiza o "Último dado recebido".
+            </p>
           ) : (
-            <button onClick={() => setConfirmarNovaUrl(true)} className="text-sm text-[#1B4F8A] hover:underline">
-              Gerar nova URL do webhook
-            </button>
+            <p className="text-xs text-gray-500">Autorize o acesso no passo 4 para criar o webhook.</p>
           )}
         </Passo>
       </div>
