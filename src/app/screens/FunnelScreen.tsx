@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ChevronDown, Info, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
+import FiltrosAvancados, { CampoBusca, CampoFiltro, classeControle } from "../components/FiltrosAvancados";
 import OportunidadeDialog from "../components/OportunidadeDialog";
 import { useUsuario } from "../components/RequireAuth";
 import {
@@ -14,6 +15,7 @@ import {
   api,
   formatarMoeda,
   PERFIS_VISAO_TOTAL,
+  type FiltrosKanban,
   type OportunidadeKanban,
   type OportunidadeSalva,
   type Vendedor,
@@ -37,6 +39,16 @@ function ordenarEtapas(kanban: Record<string, OportunidadeKanban[]>, ordem: stri
 
 const TODOS = "todos";
 
+// Filtros do painel avançado (busca e período ficam no topo da tela).
+type Filtros = {
+  vendedor: string; // id do vendedor ou TODOS
+  situacao: "" | NonNullable<FiltrosKanban["situacao"]>;
+  vmin: string; // valor mínimo, em reais
+  vmax: string; // valor máximo, em reais
+};
+const SEM_FILTROS: Filtros = { vendedor: TODOS, situacao: "", vmin: "", vmax: "" };
+const CHAVES_URL = ["vendedor", "situacao", "vmin", "vmax"] as const;
+
 export default function FunnelScreen() {
   const navigate = useNavigate();
   const usuario = useUsuario();
@@ -49,18 +61,48 @@ export default function FunnelScreen() {
   const periodoUrl = searchParams.get("periodo");
   const periodo: PeriodoId = ehPeriodo(periodoUrl) ? periodoUrl : "todos";
   const vendedorId = (veTodoTime && searchParams.get("vendedor")) || TODOS;
-  const setFiltro = (chave: "periodo" | "vendedor", valor: string) =>
+  const buscaUrl = searchParams.get("busca") ?? "";
+  const [busca, setBusca] = useState(buscaUrl);
+  const filtros: Filtros = {
+    vendedor: vendedorId,
+    situacao: (searchParams.get("situacao") as Filtros["situacao"]) ?? "",
+    vmin: searchParams.get("vmin") ?? "",
+    vmax: searchParams.get("vmax") ?? "",
+  };
+  const setFiltro = (chave: "periodo" | "busca", valor: string) =>
     setSearchParams(
       (atual) => {
         const novo = new URLSearchParams(atual);
-        if (valor === TODOS) novo.delete(chave);
+        if (!valor || valor === TODOS) novo.delete(chave);
         else novo.set(chave, valor);
         return novo;
       },
       { replace: true },
     );
   const setPeriodo = (valor: PeriodoId) => setFiltro("periodo", valor);
-  const setVendedorId = (valor: string) => setFiltro("vendedor", valor);
+  const aplicarFiltros = (novos: Filtros) =>
+    setSearchParams(
+      (atual) => {
+        const novo = new URLSearchParams(atual);
+        for (const chave of CHAVES_URL) {
+          const valor = novos[chave].trim();
+          if (!valor || valor === TODOS) novo.delete(chave);
+          else novo.set(chave, valor);
+        }
+        return novo;
+      },
+      { replace: true },
+    );
+  const filtrosAtivos = CHAVES_URL.filter((chave) => filtros[chave] && filtros[chave] !== TODOS).length;
+
+  // Espera a pessoa parar de digitar antes de buscar.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (busca.trim() !== buscaUrl) setFiltro("busca", busca.trim());
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busca]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [ordemEtapas, setOrdemEtapas] = useState<string[]>(ORDEM_ETAPAS);
   const [novaAberta, setNovaAberta] = useState(false);
@@ -102,6 +144,10 @@ export default function FunnelScreen() {
       .kanban({
         usuario_id: vendedorId === TODOS ? undefined : vendedorId,
         inicio: inicioDoPeriodo(periodo),
+        busca: buscaUrl || undefined,
+        situacao: filtros.situacao || undefined,
+        valor_min: filtros.vmin || undefined,
+        valor_max: filtros.vmax || undefined,
       })
       .then((kanban) => {
         if (!cancelado) setFunnelStages(ordenarEtapas(kanban, ordemEtapas));
@@ -115,14 +161,12 @@ export default function FunnelScreen() {
     return () => {
       cancelado = true;
     };
-  }, [periodo, vendedorId, recarga, ordemEtapas]);
+    // searchParams cobre todos os filtros da URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, recarga, ordemEtapas]);
 
-  const filtrando = periodo !== "todos" || vendedorId !== TODOS;
+  const filtrando = periodo !== "todos" || !!buscaUrl || filtrosAtivos > 0;
   const labelPeriodo = PERIODOS.find((p) => p.id === periodo)?.label ?? "Período";
-  const labelVendedor =
-    vendedorId === TODOS
-      ? "Todos os vendedores"
-      : (vendedores.find((v) => v.id === vendedorId)?.nome ?? "Vendedor");
   const classeFiltro = (ativo: boolean) =>
     `flex items-center gap-2 px-4 py-2 rounded-lg text-sm max-w-[14rem] ${
       ativo ? "bg-[#1B4F8A]/10 text-[#1B4F8A]" : "bg-[#F5F5F5] text-gray-700"
@@ -146,10 +190,16 @@ export default function FunnelScreen() {
     <div className="min-h-screen bg-white pb-20">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 lg:px-10 py-4 sticky top-0 z-10 md:flex md:items-center md:justify-between">
-        <h1 className="text-xl text-gray-900 mb-3 md:mb-0">Funil de Vendas</h1>
+        <h1 className="text-xl text-gray-900 mb-3 md:mb-0 whitespace-nowrap">Funil de Vendas</h1>
 
         {/* Filtros */}
         <div className="flex flex-wrap items-center gap-3">
+          <CampoBusca
+            valor={busca}
+            onChange={setBusca}
+            rotulo="Buscar oportunidades por nome"
+            placeholder="Empresa ou contato"
+          />
           <DropdownMenu>
             <DropdownMenuTrigger className={classeFiltro(periodo !== "todos")}>
               <span className="truncate">{labelPeriodo}</span>
@@ -166,28 +216,91 @@ export default function FunnelScreen() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {veTodoTime && (
-            <DropdownMenu>
-              <DropdownMenuTrigger className={classeFiltro(vendedorId !== TODOS)}>
-                <span className="truncate">{labelVendedor}</span>
-                <ChevronDown className="w-4 h-4 flex-shrink-0" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
-                <DropdownMenuRadioGroup value={vendedorId} onValueChange={setVendedorId}>
-                  <DropdownMenuRadioItem value={TODOS}>Todos os vendedores</DropdownMenuRadioItem>
-                  {vendedores.map((v) => (
-                    <DropdownMenuRadioItem key={v.id} value={v.id}>
-                      {v.nome}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <FiltrosAvancados
+            titulo="Filtrar oportunidades"
+            descricao="Combine os filtros e aplique. A busca e o período continuam valendo."
+            valores={filtros}
+            vazio={SEM_FILTROS}
+            ativos={filtrosAtivos}
+            onAplicar={aplicarFiltros}
+          >
+            {(f, alterar) => (
+              <>
+                {veTodoTime && (
+                  <CampoFiltro id="filtro-vendedor" rotulo="Responsável">
+                    <select
+                      id="filtro-vendedor"
+                      value={f.vendedor}
+                      onChange={(e) => alterar({ vendedor: e.target.value })}
+                      className={classeControle}
+                    >
+                      <option value={TODOS}>Todos os vendedores</option>
+                      {vendedores.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </CampoFiltro>
+                )}
+                <CampoFiltro id="filtro-situacao" rotulo="Situação">
+                  <select
+                    id="filtro-situacao"
+                    value={f.situacao}
+                    onChange={(e) => alterar({ situacao: e.target.value as Filtros["situacao"] })}
+                    className={classeControle}
+                  >
+                    <option value="">Todas</option>
+                    <option value="abertas">Em aberto (em andamento e pausadas)</option>
+                    <option value="em_andamento">Em andamento</option>
+                    <option value="pausadas">Pausadas</option>
+                    <option value="ganhas">Ganhas</option>
+                    <option value="perdidas">Perdidas</option>
+                  </select>
+                </CampoFiltro>
+                <div className="grid grid-cols-2 gap-3">
+                  <CampoFiltro id="filtro-vmin" rotulo="Valor mínimo (R$)">
+                    <input
+                      id="filtro-vmin"
+                      type="number"
+                      min={0}
+                      step={500}
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={f.vmin}
+                      onChange={(e) => alterar({ vmin: e.target.value })}
+                      className={classeControle}
+                    />
+                  </CampoFiltro>
+                  <CampoFiltro id="filtro-vmax" rotulo="Valor máximo (R$)">
+                    <input
+                      id="filtro-vmax"
+                      type="number"
+                      min={0}
+                      step={500}
+                      inputMode="decimal"
+                      placeholder="Sem limite"
+                      value={f.vmax}
+                      onChange={(e) => alterar({ vmax: e.target.value })}
+                      className={classeControle}
+                    />
+                  </CampoFiltro>
+                </div>
+                {f.vmin && f.vmax && Number(f.vmin) > Number(f.vmax) && (
+                  <p role="alert" className="text-sm text-[#EF4444]">
+                    O valor mínimo está maior que o máximo.
+                  </p>
+                )}
+              </>
+            )}
+          </FiltrosAvancados>
 
           {filtrando && (
             <button
-              onClick={() => setSearchParams({}, { replace: true })}
+              onClick={() => {
+                setBusca("");
+                setSearchParams({}, { replace: true });
+              }}
               className="text-sm text-[#1B4F8A] hover:underline"
             >
               Limpar filtros

@@ -93,6 +93,19 @@ export type FiltrosKanban = {
   usuario_id?: string;
   inicio?: string; // ISO 8601, inclusivo
   fim?: string; // ISO 8601, exclusivo
+  busca?: string; // parte do nome da empresa ou do contato
+  situacao?: "abertas" | "em_andamento" | "pausadas" | "ganhas" | "perdidas";
+  valor_min?: string;
+  valor_max?: string;
+};
+
+export type FiltrosLeads = {
+  busca?: string; // parte do nome, e-mail ou telefone
+  usuario_id?: string;
+  criado_de?: string; // AAAA-MM-DD
+  criado_ate?: string; // AAAA-MM-DD
+  oportunidades?: "com_aberta" | "com_ganha" | "sem";
+  rd?: "sincronizado" | "local";
 };
 
 export type Vendedor = { id: string; nome: string };
@@ -309,7 +322,7 @@ export const api = {
     return request<Metricas>(`/api/crm/metricas${query ? `?${query}` : ""}`);
   },
   etapas: () => request<Etapas>("/api/crm/etapas"),
-  leads: (filtros: { busca?: string; usuario_id?: string } = {}) => {
+  leads: (filtros: FiltrosLeads = {}) => {
     const params = new URLSearchParams();
     for (const [chave, valor] of Object.entries(filtros)) if (valor) params.set(chave, valor);
     const query = params.toString();
