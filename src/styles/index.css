@@ -7,7 +7,7 @@ body {
   background: #f8f9fa;
 }
 
-/* Ocupa a tela toda; o layout responsivo fica em components/AppLayout.tsx */
+/* Ocupa a tela toda; o menu lateral e a barra inferior ficam em components/RequireAuth.tsx */
 #root {
   min-height: 100vh;
 }
